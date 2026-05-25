@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Viral Gadget Store — Trending gadgets. Order directly on WhatsApp." />
+  <title>Viral Gadget Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: '#0F172A',
+            secondary: '#111827',
+            card: '#1E293B',
+            border: '#334155',
+            accent: '#22C55E',
+            'accent-hover': '#16A34A',
+            primary: '#FFFFFF',
+            'text-secondary': '#CBD5E1',
+            muted: '#94A3B8',
+            search: '#1E293B',
+            'search-border': '#475569',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+    #product-grid { -webkit-overflow-scrolling: touch; }
+    .product-card {
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
+    }
+    @media (min-width: 768px) {
+      .product-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(34, 197, 94, 0.45);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.12);
+      }
+    }
+    .btn-whatsapp { transition: background-color 0.2s ease, transform 0.15s ease; }
+    .btn-whatsapp:active { transform: scale(0.98); }
+    .sticky-wa { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .sticky-wa:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 24px rgba(34, 197, 94, 0.35);
+    }
+    .product-image-wrap img { object-fit: cover; object-position: center; }
+    #search-panel {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition: grid-template-rows 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+      margin-top: 0;
+    }
+    #search-panel.is-open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      margin-top: 0.625rem;
+    }
+    #search-panel > .search-panel-inner { overflow: hidden; }
+    #product-grid.is-filtering .product-card { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0.4; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .nav-link {
+      transition: color 0.2s ease, background-color 0.2s ease;
+    }
+    .nav-link.is-active {
+      color: #22C55E;
+    }
+    .nav-link:hover:not(.is-active) {
+      color: #22C55E;
+    }
+    #sidebar-overlay {
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    #sidebar-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    #sidebar {
+      transition: transform 0.3s ease;
+    }
+    #sidebar.is-open {
+      transform: translateX(0);
+    }
+    .hamburger-line {
+      transition: transform 0.25s ease, opacity 0.25s ease, top 0.25s ease;
+    }
+    #menu-toggle.is-open .hamburger-line:nth-child(1) {
+      top: 50%;
+      transform: translateY(-50%) rotate(45deg);
+    }
+    #menu-toggle.is-open .hamburger-line:nth-child(2) {
+      opacity: 0;
+    }
+    #menu-toggle.is-open .hamburger-line:nth-child(3) {
+      top: 50%;
+      transform: translateY(-50%) rotate(-45deg);
+    }
+    body.sidebar-open {
+      overflow: hidden;
+    }
+    .page-view {
+      transition: opacity 0.2s ease;
+    }
+    .page-view.is-entering {
+      opacity: 0;
+    }
+    .category-card {
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    @media (min-width: 768px) {
+      .category-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(34, 197, 94, 0.45);
+        box-shadow: 0 0 16px rgba(34, 197, 94, 0.1);
+      }
+    }
+  </style>
+</head>
+<body class="bg-surface text-primary font-sans antialiased min-h-screen">
+
+  <div
+    id="sidebar-overlay"
+    class="fixed inset-0 z-[60] bg-black/50 opacity-0 invisible pointer-events-none"
+    aria-hidden="true"
+  ></div>
+
+  <aside
+    id="sidebar"
+    class="fixed top-0 left-0 z-[70] h-full w-[min(280px,85vw)] -translate-x-full bg-surface border-r border-border flex flex-col"
+    aria-hidden="true"
+    aria-label="Mobile navigation"
+  >
+    <div class="flex items-center justify-between px-4 py-4 border-b border-border">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <img
+          src="logo.jpg"
+          alt=""
+          width="36"
+          height="36"
+          class="sidebar-logo w-9 h-9 rounded-full object-cover border border-border shrink-0 bg-card"
+          aria-hidden="true"
+        />
+        <span class="text-sm font-semibold text-primary truncate">Viral Gadget Store</span>
+      </div>
+      <button
+        id="sidebar-close"
+        type="button"
+        aria-label="Close menu"
+        class="flex items-center justify-center w-9 h-9 rounded-full border border-border text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
+      >
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+      <a href="#/home" class="sidebar-nav-link nav-link flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-card" data-nav="home">
+        <i data-lucide="home" class="w-4 h-4 shrink-0"></i> Home
+      </a>
+      <a href="#/products" class="sidebar-nav-link nav-link flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-card" data-nav="products">
+        <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i> Products
+      </a>
+      <a href="#/categories" class="sidebar-nav-link nav-link flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-card" data-nav="categories">
+        <i data-lucide="tags" class="w-4 h-4 shrink-0"></i> Categories
+      </a>
+      <a href="#/contact" class="sidebar-nav-link nav-link flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-card" data-nav="contact">
+        <i data-lucide="phone" class="w-4 h-4 shrink-0"></i> Contact
+      </a>
+    </nav>
+
+    <div class="p-4 border-t border-border">
+      <a
+        id="sidebar-whatsapp"
+        href="#"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-accent text-primary text-sm font-semibold hover:bg-accent-hover transition-colors"
+      >
+        <i data-lucide="message-circle" class="w-4 h-4"></i>
+        Chat on WhatsApp
+      </a>
+    </div>
+  </aside>
+
+  <header id="navbar" class="border-b border-border bg-secondary/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-3 py-2.5 md:px-4 md:py-3">
+      <nav class="flex items-center justify-between gap-3 lg:gap-6">
+        <a href="#/home" id="brand-link" data-nav="home" class="flex items-center gap-2.5 min-w-0 shrink-0">
+          <img
+            id="store-logo"
+            src="logo.jpg"
+            alt="Viral Gadget Store"
+            width="40"
+            height="40"
+            class="w-10 h-10 rounded-full object-cover border border-border shrink-0 bg-card"
+          />
+          <span class="text-sm md:text-base font-semibold tracking-tight text-primary truncate">
+            Viral Gadget Store
+          </span>
+        </a>
+
+        <div class="hidden lg:flex items-center gap-1 flex-1 justify-center">
+          <a href="#/home" class="nav-link desktop-nav-link px-4 py-2 rounded-lg text-sm font-medium text-text-secondary" data-nav="home">Home</a>
+          <a href="#/products" class="nav-link desktop-nav-link px-4 py-2 rounded-lg text-sm font-medium text-text-secondary" data-nav="products">Products</a>
+          <a href="#/categories" class="nav-link desktop-nav-link px-4 py-2 rounded-lg text-sm font-medium text-text-secondary" data-nav="categories">Categories</a>
+          <a href="#/contact" class="nav-link desktop-nav-link px-4 py-2 rounded-lg text-sm font-medium text-text-secondary" data-nav="contact">Contact</a>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="search-toggle"
+            type="button"
+            aria-label="Open search"
+            aria-expanded="false"
+            aria-controls="search-panel"
+            class="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full border border-border bg-card text-text-secondary hover:text-accent hover:border-accent/50 transition-colors duration-200"
+          >
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </button>
+
+          <button
+            id="menu-toggle"
+            type="button"
+            aria-label="Open menu"
+            aria-expanded="false"
+            aria-controls="sidebar"
+            class="lg:hidden relative flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full border border-border bg-card text-text-secondary hover:text-accent hover:border-accent/50 transition-colors duration-200"
+          >
+            <span class="sr-only">Menu</span>
+            <span class="relative block w-5 h-3.5">
+              <span class="hamburger-line absolute left-0 top-0 block w-5 h-0.5 bg-current rounded-full"></span>
+              <span class="hamburger-line absolute left-0 top-1/2 -translate-y-1/2 block w-5 h-0.5 bg-current rounded-full"></span>
+              <span class="hamburger-line absolute left-0 bottom-0 block w-5 h-0.5 bg-current rounded-full"></span>
+            </span>
+          </button>
+        </div>
+      </nav>
+
+      <div id="search-panel" role="region" aria-label="Product search">
+        <div class="search-panel-inner">
+          <div class="relative">
+            <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"></i>
+            <input
+              id="search-input"
+              type="search"
+              placeholder="Search by name, code or keyword..."
+              autocomplete="off"
+              class="w-full h-10 md:h-11 pl-10 pr-10 rounded-full bg-search border border-search-border text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/40 transition-colors duration-200"
+            />
+            <button
+              id="search-clear"
+              type="button"
+              aria-label="Clear search"
+              class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
+            >
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="mt-2 text-[10px] md:text-xs text-muted text-center leading-snug">
+        Trending gadgets delivered directly via WhatsApp orders
+      </p>
+    </div>
+  </header>
+
+  <div id="app-pages" class="max-w-7xl mx-auto px-2 py-3 pb-20 md:px-4 md:py-5 md:pb-24">
+
+    <!-- Home -->
+    <section data-page="home" id="page-home" class="page-view">
+      <div class="rounded-xl bg-card border border-border p-4 md:p-5 text-center mb-4 md:mb-5">
+        <p class="text-[10px] md:text-xs text-accent font-medium uppercase tracking-wider mb-1">Viral Gadget Store</p>
+        <h2 class="text-base md:text-lg font-bold text-primary">Trending Gadgets, Direct to You</h2>
+        <p class="mt-1.5 text-xs md:text-sm text-muted max-w-sm mx-auto leading-snug">
+          Order instantly on WhatsApp — fast delivery, premium tech picks.
+        </p>
+        <button type="button" data-go="products" class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-primary text-xs md:text-sm font-semibold hover:bg-accent-hover transition-colors">
+          Shop All Products
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between mb-2 md:mb-3">
+        <h3 class="text-sm md:text-base font-semibold text-primary">Featured Products</h3>
+        <button type="button" data-go="products" class="text-[10px] md:text-xs text-accent font-medium hover:underline">View all</button>
+      </div>
+      <div id="featured-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 items-stretch mb-5 md:mb-6"></div>
+
+      <div class="flex items-center justify-between mb-2 md:mb-3">
+        <h3 class="text-sm md:text-base font-semibold text-primary">Trending Gadgets</h3>
+        <button type="button" data-go="products" class="text-[10px] md:text-xs text-accent font-medium hover:underline">View all</button>
+      </div>
+      <div id="trending-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 items-stretch"></div>
+    </section>
+
+    <!-- Products -->
+    <section data-page="products" id="page-products" class="page-view hidden">
+      <div id="category-filter-bar" class="flex gap-2 overflow-x-auto pb-2 mb-2 md:mb-3 scrollbar-none -mx-0.5 px-0.5"></div>
+      <p id="search-empty" class="hidden text-center text-sm text-muted py-8">
+        No products found. Try another search.
+      </p>
+      <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 items-stretch"></div>
+    </section>
+
+    <!-- Categories -->
+    <section data-page="categories" id="page-categories" class="page-view hidden">
+      <div class="mb-3 md:mb-4">
+        <h2 class="text-sm md:text-base font-semibold text-primary">Shop by Category</h2>
+        <p class="text-[10px] md:text-xs text-muted mt-0.5">Tap a category to filter products</p>
+      </div>
+      <div id="categories-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 lg:gap-4"></div>
+    </section>
+
+    <!-- Contact -->
+    <section data-page="contact" id="page-contact" class="page-view hidden">
+      <div class="max-w-md mx-auto">
+        <div class="text-center mb-5 md:mb-6">
+          <h2 class="text-base md:text-lg font-semibold text-primary">Get in Touch</h2>
+          <p class="mt-1.5 text-xs md:text-sm text-muted leading-snug">
+            Questions about orders or products? We reply fast on WhatsApp.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <a id="contact-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 md:p-4 rounded-xl bg-card border border-border hover:border-accent/50 transition-colors">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 text-accent shrink-0">
+              <i data-lucide="message-circle" class="w-5 h-5"></i>
+            </span>
+            <div class="min-w-0 text-left">
+              <p class="text-sm font-semibold text-primary">WhatsApp</p>
+              <p class="text-xs text-muted">+91 8758750596</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-muted ml-auto shrink-0"></i>
+          </a>
+
+          <a href="https://instagram.com/viralgadgetstore" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 md:p-4 rounded-xl bg-card border border-border hover:border-accent/50 transition-colors">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 text-accent shrink-0">
+              <i data-lucide="instagram" class="w-5 h-5"></i>
+            </span>
+            <div class="min-w-0 text-left">
+              <p class="text-sm font-semibold text-primary">Instagram</p>
+              <p class="text-xs text-muted">@viralgadgetstore</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-muted ml-auto shrink-0"></i>
+          </a>
+
+          <a href="mailto:support@viralgadgetstore.com" class="flex items-center gap-3 p-3 md:p-4 rounded-xl bg-card border border-border hover:border-accent/50 transition-colors">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 text-accent shrink-0">
+              <i data-lucide="mail" class="w-5 h-5"></i>
+            </span>
+            <div class="min-w-0 text-left">
+              <p class="text-sm font-semibold text-primary">Email</p>
+              <p class="text-xs text-muted truncate">support@viralgadgetstore.com</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-muted ml-auto shrink-0"></i>
+          </a>
+        </div>
+
+        <p class="mt-5 text-center text-[10px] md:text-xs text-muted leading-relaxed px-2">
+          Viral Gadget Store — premium gadgets for Instagram &amp; WhatsApp shoppers. Order anytime, we&apos;ll confirm on chat.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <a
+    id="sticky-support"
+    href="#"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Chat on WhatsApp"
+    class="sticky-wa fixed bottom-4 right-3 md:bottom-5 md:right-5 z-50 flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-accent text-primary shadow-lg hover:bg-accent-hover"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 md:w-7 md:h-7" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.882 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </a>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
